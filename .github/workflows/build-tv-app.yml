@@ -1,45 +1,11 @@
-name: Build Simple Live TV App
+# ... （前面的步骤不变）
 
-on:
-  push:
-    branches: [ master ] # 或者你想要触发构建的分支
-  pull_request:
-    branches: [ master ]
-  workflow_dispatch: # 允许手动触发
+- name: Build APK
+  run: flutter build apk --debug # 或 --release
 
-jobs:
-  build-android-apk:
-    runs-on: ubuntu-latest # 使用 Linux 环境
-
-    steps:
-    - uses: actions/checkout@v3 # 检出代码
-
-    - name: Set up JDK 11 # Flutter 需要 Java
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-
-    - name: Setup Flutter # 安装 Flutter SDK
-      uses: subosito/flutter-action@v2
-      with:
-        channel: 'stable' # 或 'beta', 'dev' 根据项目需求
-
-    - name: Install dependencies # 获取 Flutter 包依赖
-      run: flutter pub get
-
-    # --- 关键点 ---
-    # TV 应用可能需要特定的配置或签名
-    # 如果项目包含不同的 Flavor (如 tv)，需要指定
-    # - name: Build APK (specific flavor if needed)
-    #   run: flutter build apk --flavor tv # 示例，具体看项目配置
-    # 如果只需要普通 Android APK (可能也适配TV)，则：
-    - name: Build APK
-      run: flutter build apk --debug # 或 --release (需要签名)
-
-    - name: Upload APK Artifact # 将生成的 APK 作为构建产物上传，方便下载
-      uses: actions/upload-artifact@v3
-      with:
-        name: simple-live-tv-app-debug.apk # 产物名称
-        path: build/app/outputs/flutter-apk/app-debug.apk # APK 路径 (根据 flavor 可能不同)
-        # 如果是 release 版本，路径可能是 build/app/outputs/flutter-apk/app-release.apk
+- name: Upload APK Artifact
+  uses: actions/upload-artifact@v4 # <-- 更新到这里
+  with:
+    name: simple-live-tv-app-debug.apk
+    path: build/app/outputs/flutter-apk/app-debug.apk
+    retention-days: 90 # <-- 显式设置保留天数（可选，但推荐）
