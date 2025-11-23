@@ -1,11 +1,68 @@
-# ... （前面的步骤不变）
+name: Build Simple Live TV App (Debug)
 
-- name: Build APK
-  run: flutter build apk --debug # 或 --release
+# 触发条件：推送代码到 master 分支、创建 Pull Request 或手动触发
+on:
+  push:
+    branches: [ master ] # 根据你的默认分支名调整，比如 main
+  pull_request:
+    branches: [ master ] # 根据你的默认分支名调整
+  workflow_dispatch: # 允许手动触发
 
-- name: Upload APK Artifact
-  uses: actions/upload-artifact@v4 # <-- 更新到这里
-  with:
-    name: simple-live-tv-app-debug.apk
-    path: build/app/outputs/flutter-apk/app-debug.apk
-    retention-days: 90 # <-- 显式设置保留天数（可选，但推荐）
+jobs:
+  build-android-apk-debug:
+    runs-on: ubuntu-latest # 使用 Linux 环境，速度快且免费额度高
+
+    steps:
+    # 1. 检出代码
+    - uses: actions/checkout@v4 # 升级到 v4
+
+    # 2. 设置 JDK 17 (Flutter 和 Android SDK 需要)
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4 # 升级到 v4
+      with:
+        java-version: '17'
+        distribution: 'temurin' # 或 'zulu', 'liberica' 等
+        cache: 'gradle' # 缓存 Gradle 依赖，加快下次构建
+
+    # 3. 设置 Flutter SDK
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        # channel: 'stable' # 可以指定稳定版
+        flutter-version: '3.22.x' # 或者指定具体版本，根据项目需求调整
+        cache: true # 缓存 Flutter SDK，加快下次构建
+
+    # 4. 进入 TV App 目录并获取依赖
+    - name: Install dependencies
+      run: |
+        cd simple_live_tv_app
+        flutter pub get
+
+    # 5. 构建 Debug APK
+    # 注意：这里去掉了 --release 和签名相关的步骤，只构建 debug 版本
+    - name: Build Debug APK
+      run: |
+        cd simple_live_tv_app
+        flutter build apk --debug # 构建 Debug 版本
+
+    # 6. 上传生成的 Debug APK 作为 Artifact
+    - name: Upload Debug APK Artifact
+      uses: actions/upload-artifact@v4 # 升级到 v4
+      with:
+        name: simple-live-tv-app-debug-unaligned.apk # 给 Artifact 起个名字
+        # 注意路径：Debug APK 通常在这里 (未对齐版本)
+        path: simple_live_tv_app/build/app/outputs/flutter-apk/app-debug.apk
+        # 如果你想保留更长时间，可以设置 retention-days (默认是 90 天)
+        # retention-days: 30 
+
+    # (可选) 如果你想构建 Release 版本但不签名，可以使用下面的命令，
+    # 但这会生成一个 unsigned APK，需要额外步骤才能安装。
+    # - name: Build Unsigned Release APK (Example)
+    #   run: |
+    #     cd simple_live_tv_app
+    #     flutter build apk --release --no-shrink # --no-shrink 避免 R8/Proguard 问题（如果遇到）
+    # - name: Upload Unsigned Release APK Artifact (Example)
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: simple-live-tv-app-release-unsigned.apk
+    #     path: simple_live_tv_app/build/app/outputs/flutter-apk/app-release-unsigned.apk
